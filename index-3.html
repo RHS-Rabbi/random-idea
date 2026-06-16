@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>PayQR · Print & FlexiLoad</title>
+    <!-- Tailwind via CDN + custom layers -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRCode.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Font Awesome Icons (free) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* custom smooth transitions & dark mode overrides */
+        * {
+            transition: background-color 0.25s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .qr-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(2px);
+            transition: all 0.2s ease;
+        }
+        .dark .qr-card {
+            background: rgba(30, 30, 40, 0.8);
+            backdrop-filter: blur(2px);
+        }
+        .method-btn {
+            transition: all 0.15s ease;
+            border: 2px solid transparent;
+        }
+        .method-btn.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+            box-shadow: 0 4px 10px -4px rgba(37, 99, 235, 0.25);
+        }
+        .dark .method-btn.active {
+            background: #1e293b;
+            border-color: #60a5fa;
+            box-shadow: 0 4px 12px -4px rgba(96, 165, 250, 0.3);
+        }
+        .method-btn i {
+            font-size: 1.6rem;
+        }
+        /* card shadow */
+        .shadow-soft {
+            box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.02);
+        }
+        .dark .shadow-soft {
+            box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.5);
+        }
+        #qrcode-container img,
+        #qrcode-container canvas {
+            display: block;
+            margin: 0 auto;
+            width: 180px !important;
+            height: 180px !important;
+            object-fit: contain;
+        }
+        #qrcode-container {
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .footer-text {
+            font-size: 0.85rem;
+            letter-spacing: 0.3px;
+        }
+        /* custom number input */
+        .custom-input {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+        .dark .custom-input {
+            background: #1e293b;
+            border-color: #334155;
+            color: #f1f5f9;
+        }
+        .dark .custom-input::placeholder {
+            color: #94a3b8;
+        }
+        .dark .custom-input:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased min-h-screen flex flex-col">
+
+    <!-- MAIN WRAPPER -->
+    <div class="max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 flex-1 flex flex-col">
+
+        <!-- HEADER: Shop name + dark toggle -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-indigo-700 dark:text-indigo-400">
+                <i class="fas fa-print mr-2 text-indigo-500"></i>CopyFlex
+            </h1>
+            <button id="darkToggle" class="p-2.5 rounded-full bg-white/70 dark:bg-slate-700/70 shadow-sm hover:shadow-md transition text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                <i id="darkIcon" class="fas fa-moon text-lg"></i>
+            </button>
+        </div>
+
+        <!-- CARD: MAIN PAYMENT SECTION -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-soft p-5 md:p-7 flex-1">
+
+            <!-- payment method selector -->
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <button data-method="bkash" class="method-btn active flex flex-col items-center justify-center p-3 rounded-2xl bg-white dark:bg-slate-700 shadow-sm border-2 border-transparent">
+                    <i class="fab fa-cc-visa text-pink-600 dark:text-pink-400"></i>
+                    <span class="text-sm font-medium mt-1">bKash</span>
+                </button>
+                <button data-method="nagad" class="method-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-white dark:bg-slate-700 shadow-sm border-2 border-transparent">
+                    <i class="fas fa-mobile-alt text-orange-500 dark:text-orange-400"></i>
+                    <span class="text-sm font-medium mt-1">Nagad</span>
+                </button>
+                <button data-method="rocket" class="method-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-white dark:bg-slate-700 shadow-sm border-2 border-transparent">
+                    <i class="fas fa-rocket text-blue-600 dark:text-blue-400"></i>
+                    <span class="text-sm font-medium mt-1">Rocket</span>
+                </button>
+            </div>
+
+            <!-- dynamic QR + number area -->
+            <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
+                <!-- QR code block -->
+                <div class="w-full md:w-1/2 flex flex-col items-center">
+                    <div id="qrcode-container" class="bg-white dark:bg-slate-700 rounded-2xl p-3 w-full flex justify-center items-center border border-slate-200 dark:border-slate-600">
+                        <!-- QRCode.js injects here -->
+                        <div id="qrcode"></div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-4 justify-center">
+                        <button id="downloadQr" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition shadow-sm">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button id="shareQr" class="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-white text-sm font-medium rounded-xl transition">
+                            <i class="fas fa-share-alt"></i> Share
+                        </button>
+                    </div>
+                </div>
+
+                <!-- number + copy + custom number input -->
+                <div class="w-full md:w-1/2 space-y-4">
+                    <div class="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl">
+                        <p class="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-400 font-semibold">Payment Number</p>
+                        <div class="flex items-center justify-between mt-1">
+                            <span id="displayNumber" class="text-xl md:text-2xl font-mono font-semibold text-slate-800 dark:text-white tracking-wide">018XXXXXXXX</span>
+                            <button id="copyNumber" class="p-2 rounded-full bg-indigo-100 dark:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-700 transition" title="Copy number">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- custom user number input (show his own QR) -->
+                    <div class="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl">
+                        <label for="userNumber" class="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-400 font-semibold block mb-1">
+                            <i class="fas fa-pen-alt mr-1"></i> Your number (custom QR)
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input id="userNumber" type="tel" placeholder="01XXXXXXXXX" class="custom-input w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500" />
+                            <button id="applyUserNumber" class="px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-xl transition shadow-sm whitespace-nowrap">
+                                <i class="fas fa-qrcode mr-1"></i> Show
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 dark:text-slate-400 mt-1.5">Enter any number to generate its QR &amp; copy</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- helper hint: current method -->
+            <div class="mt-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <span id="methodHint"><i class="fas fa-credit-card mr-1"></i> Active: bKash</span>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="mt-8 text-center footer-text text-slate-400 dark:text-slate-500 border-t border-slate-200/60 dark:border-slate-700/60 pt-5">
+            Powered by <span class="font-semibold text-slate-600 dark:text-slate-300">CopyFlex</span> · Print &amp; FlexiLoad
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            "use strict";
+
+            // ---------- CONFIG: payment data ----------
+            const PAYMENT_DATA = {
+                bkash: {
+                    number: '01812345678',
+                    label: 'bKash'
+                },
+                nagad: {
+                    number: '01798765432',
+                    label: 'Nagad'
+                },
+                rocket: {
+                    number: '01654321098',
+                    label: 'Rocket'
+                }
+            };
+
+            // ---------- DOM refs ----------
+            const qrContainer = document.getElementById('qrcode');
+            const displayNumber = document.getElementById('displayNumber');
+            const methodBtns = document.querySelectorAll('.method-btn');
+            const methodHint = document.getElementById('methodHint');
+            const copyBtn = document.getElementById('copyNumber');
+            const downloadBtn = document.getElementById('downloadQr');
+            const shareBtn = document.getElementById('shareQr');
+            const userNumberInput = document.getElementById('userNumber');
+            const applyUserBtn = document.getElementById('applyUserNumber');
+
+            // dark mode
+            const darkToggle = document.getElementById('darkToggle');
+            const darkIcon = document.getElementById('darkIcon');
+
+            // state
+            let currentMethod = 'bkash';           // 'bkash' | 'nagad' | 'rocket'
+            let currentNumber = PAYMENT_DATA.bkash.number;
+            let qrCodeInstance = null;
+
+            // ---------- helper: generate QR from number ----------
+            function generateQR(number) {
+                // clear previous qr
+                qrContainer.innerHTML = '';
+                // create new QRCode instance
+                qrCodeInstance = new QRCode(qrContainer, {
+                    text: number,
+                    width: 180,
+                    height: 180,
+                    colorDark: '#1e293b',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                // adapt dark mode for QR colors (re-generate if dark)
+                adaptQRColors();
+            }
+
+            // adapt QR colors based on dark mode (recreate)
+            function adaptQRColors() {
+                if (!qrCodeInstance) return;
+                const isDark = document.documentElement.classList.contains('dark');
+                const darkColor = '#e2e8f0';
+                const lightColor = '#1e293b';
+                const colorDark = isDark ? darkColor : '#1e293b';
+                const colorLight = isDark ? '#0f172a' : '#ffffff';
+                // we need to regenerate with new colors
+                const currentText = qrCodeInstance._htOption.text || currentNumber;
+                qrContainer.innerHTML = '';
+                qrCodeInstance = new QRCode(qrContainer, {
+                    text: currentText,
+                    width: 180,
+                    height: 180,
+                    colorDark: colorDark,
+                    colorLight: colorLight,
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+
+            // update UI: number, active button, hint, qr
+            function updatePaymentUI(methodKey) {
+                const data = PAYMENT_DATA[methodKey];
+                if (!data) return;
+                currentMethod = methodKey;
+                currentNumber = data.number;
+                displayNumber.textContent = data.number;
+                methodHint.innerHTML = `<i class="fas fa-credit-card mr-1"></i> Active: ${data.label}`;
+
+                // toggle active class on buttons
+                methodBtns.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.method === methodKey) {
+                        btn.classList.add('active');
+                    }
+                });
+
+                // generate QR
+                generateQR(currentNumber);
+            }
+
+            // ---------- copy number ----------
+            function copyCurrentNumber() {
+                const num = displayNumber.textContent.trim();
+                if (!num) return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(num)
+                        .then(() => {
+                            showToast('Number copied!');
+                        })
+                        .catch(() => {
+                            fallbackCopy(num);
+                        });
+                } else {
+                    fallbackCopy(num);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Number copied!');
+                } catch (e) {
+                    showToast('Could not copy');
+                }
+                document.body.removeChild(textarea);
+            }
+
+            // simple toast (no extra lib)
+            function showToast(msg) {
+                const old = document.querySelector('.toast-msg');
+                if (old) old.remove();
+                const div = document.createElement('div');
+                div.className =
+                    'toast-msg fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-800 dark:bg-slate-700 text-white px-5 py-2.5 rounded-2xl text-sm shadow-lg z-50 transition-opacity duration-300';
+                div.textContent = msg;
+                document.body.appendChild(div);
+                setTimeout(() => {
+                    div.style.opacity = '0';
+                    setTimeout(() => div.remove(), 300);
+                }, 2000);
+            }
+
+            // ---------- download QR (canvas) ----------
+            function downloadQR() {
+                const canvas = qrContainer.querySelector('canvas');
+                if (!canvas) {
+                    showToast('QR not ready');
+                    return;
+                }
+                const link = document.createElement('a');
+                link.download = `QR_${currentMethod}_${currentNumber}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
+
+            // ---------- share via Web Share API ----------
+            function shareQR() {
+                const canvas = qrContainer.querySelector('canvas');
+                if (!canvas) {
+                    showToast('QR not ready');
+                    return;
+                }
+                // try to share as image
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        // fallback: share text
+                        if (navigator.share) {
+                            navigator.share({
+                                title: 'Payment QR',
+                                text: `Scan my ${PAYMENT_DATA[currentMethod].label} QR: ${currentNumber}`,
+                            }).catch(() => {});
+                        } else {
+                            showToast('Share not supported');
+                        }
+                        return;
+                    }
+                    const file = new File([blob], `QR_${currentMethod}.png`, { type: 'image/png' });
+                    if (navigator.share) {
+                        navigator.share({
+                            title: 'Payment QR',
+                            text: `Scan my ${PAYMENT_DATA[currentMethod].label} QR`,
+                            files: [file],
+                        }).catch(() => {});
+                    } else {
+                        // fallback: download
+                        downloadQR();
+                        showToast('Share not supported, downloaded instead');
+                    }
+                }, 'image/png');
+            }
+
+            // ---------- custom user number: show his QR & copy ----------
+            function applyUserNumber() {
+                let raw = userNumberInput.value.trim();
+                if (!raw) {
+                    showToast('Please enter a number');
+                    return;
+                }
+                // simple format: if starts with 01 and length 11 / 14 etc.
+                // just use as is
+                currentNumber = raw;
+                displayNumber.textContent = raw;
+                generateQR(raw);
+                // deactivate method buttons (optional) – we keep active but we show custom
+                methodBtns.forEach(btn => btn.classList.remove('active'));
+                // set hint to custom
+                methodHint.innerHTML = `<i class="fas fa-user-edit mr-1"></i> Custom: ${raw}`;
+                // also update currentMethod to 'custom' so download uses correct name
+                currentMethod = 'custom';
+                // copy number will copy the custom one
+                showToast('Custom QR generated');
+            }
+
+            // ---------- dark mode toggle ----------
+            function toggleDark() {
+                const html = document.documentElement;
+                html.classList.toggle('dark');
+                const isDark = html.classList.contains('dark');
+                darkIcon.className = isDark ? 'fas fa-sun text-lg' : 'fas fa-moon text-lg';
+                // re-generate QR with correct colors
+                if (qrCodeInstance) {
+                    adaptQRColors();
+                }
+                // also update toast color if needed (not necessary)
+            }
+
+            // ---------- init default ----------
+            function init() {
+                // set default method active
+                updatePaymentUI('bkash');
+                // user input placeholder
+                userNumberInput.placeholder = '01XXXXXXXXX';
+                // event listeners
+                methodBtns.forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        const method = this.dataset.method;
+                        if (method && PAYMENT_DATA[method]) {
+                            updatePaymentUI(method);
+                            // clear user input if any
+                            userNumberInput.value = '';
+                        }
+                    });
+                });
+
+                copyBtn.addEventListener('click', copyCurrentNumber);
+                downloadBtn.addEventListener('click', downloadQR);
+                shareBtn.addEventListener('click', shareQR);
+
+                applyUserBtn.addEventListener('click', applyUserNumber);
+                userNumberInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') applyUserNumber();
+                });
+
+                darkToggle.addEventListener('click', toggleDark);
+
+                // if dark mode is default from system? we set based on class
+                if (document.documentElement.classList.contains('dark')) {
+                    darkIcon.className = 'fas fa-sun text-lg';
+                } else {
+                    darkIcon.className = 'fas fa-moon text-lg';
+                }
+            }
+
+            // call init when DOM ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+            // re-adapt QR if window resizes (not needed but keep)
+            // but we need to handle dark mode toggle via adapt
+
+            // expose for debugging (optional)
+            window.__qr = { generateQR, updatePaymentUI, adaptQRColors };
+
+        })();
+    </script>
+
+</body>
+</html>

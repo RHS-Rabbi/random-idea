@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment QR - Photocopy & Flexiload Shop</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        .glass {
+            backdrop-filter: blur(12px);
+        }
+
+        .fade-in {
+            animation: fade .3s ease;
+        }
+
+        @keyframes fade {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-100 dark:bg-slate-950 transition-all duration-300 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header
+        class="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 glass border-b border-slate-200 dark:border-slate-800">
+
+        <div class="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
+
+            <div>
+                <h1 class="text-xl font-bold text-slate-900 dark:text-white">
+                    RK Photocopy & Flexiload
+                </h1>
+
+                <p class="text-xs text-slate-500">
+                    Fast & Secure Digital Payments
+                </p>
+            </div>
+
+            <button id="themeToggle"
+                class="p-2 rounded-xl bg-slate-200 dark:bg-slate-800">
+                🌙
+            </button>
+
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1 p-4">
+
+        <div class="max-w-md mx-auto">
+
+            <!-- Payment Card -->
+            <div
+                class="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-5 border border-slate-200 dark:border-slate-800">
+
+                <h2
+                    class="text-lg font-semibold text-center text-slate-800 dark:text-white mb-5">
+
+                    Select Payment Method
+                </h2>
+
+                <!-- Payment Buttons -->
+                <div class="grid grid-cols-3 gap-3 mb-6">
+
+                    <button
+                        onclick="selectPayment('bkash')"
+                        class="payment-btn bg-pink-500 text-white py-3 rounded-xl font-semibold">
+                        bKash
+                    </button>
+
+                    <button
+                        onclick="selectPayment('nagad')"
+                        class="payment-btn bg-orange-500 text-white py-3 rounded-xl font-semibold">
+                        Nagad
+                    </button>
+
+                    <button
+                        onclick="selectPayment('rocket')"
+                        class="payment-btn bg-purple-600 text-white py-3 rounded-xl font-semibold">
+                        Rocket
+                    </button>
+
+                </div>
+
+                <!-- Custom Number -->
+                <div class="mb-6">
+
+                    <label
+                        class="block text-sm mb-2 font-medium text-slate-700 dark:text-slate-300">
+                        Generate QR From Your Number
+                    </label>
+
+                    <div class="flex gap-2">
+
+                        <input
+                            type="text"
+                            id="customNumber"
+                            placeholder="01XXXXXXXXX"
+                            class="flex-1 px-4 py-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+
+                        <button
+                            onclick="generateCustomQR()"
+                            class="bg-blue-600 text-white px-4 rounded-xl">
+                            Generate
+                        </button>
+
+                    </div>
+                </div>
+
+                <!-- Number Display -->
+                <div
+                    class="bg-slate-100 dark:bg-slate-800 rounded-2xl p-4 text-center mb-5">
+
+                    <p class="text-sm text-slate-500">
+                        Payment Number
+                    </p>
+
+                    <h3 id="numberDisplay"
+                        class="text-xl font-bold text-slate-900 dark:text-white mt-1">
+                        Select Method
+                    </h3>
+
+                </div>
+
+                <!-- QR -->
+                <div class="flex justify-center mb-6">
+
+                    <div
+                        class="bg-white p-4 rounded-2xl shadow-lg">
+
+                        <div id="qrcode"></div>
+
+                    </div>
+
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-3 gap-3">
+
+                    <button
+                        onclick="copyNumber()"
+                        class="bg-green-600 text-white py-3 rounded-xl font-medium">
+
+                        Copy
+                    </button>
+
+                    <button
+                        onclick="downloadQR()"
+                        class="bg-blue-600 text-white py-3 rounded-xl font-medium">
+
+                        Download
+                    </button>
+
+                    <button
+                        onclick="shareQR()"
+                        class="bg-indigo-600 text-white py-3 rounded-xl font-medium">
+
+                        Share
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer
+        class="text-center py-6 text-sm text-slate-500 dark:text-slate-400">
+
+        Powered by RK Photocopy & Flexiload
+
+    </footer>
+
+    <script>
+
+        // ===============================
+        // Payment Numbers
+        // ===============================
+
+        const paymentData = {
+            bkash: "01711111111",
+            nagad: "01822222222",
+            rocket: "01933333333"
+        };
+
+        let currentNumber = "";
+
+        let qrCode = null;
+
+        const qrContainer = document.getElementById("qrcode");
+
+        // ===============================
+        // Generate QR
+        // ===============================
+
+        function generateQR(text) {
+
+            qrContainer.innerHTML = "";
+
+            qrCode = new QRCode(qrContainer, {
+                text: text,
+                width: 220,
+                height: 220,
+                colorDark: "#111827",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        // ===============================
+        // Select Payment
+        // ===============================
+
+        function selectPayment(method) {
+
+            currentNumber = paymentData[method];
+
+            document.getElementById("numberDisplay").innerText = currentNumber;
+
+            generateQR(currentNumber);
+        }
+
+        // ===============================
+        // Custom QR
+        // ===============================
+
+        function generateCustomQR() {
+
+            const number =
+                document.getElementById("customNumber").value.trim();
+
+            if (!number) {
+                alert("Please enter a number");
+                return;
+            }
+
+            currentNumber = number;
+
+            document.getElementById("numberDisplay").innerText = number;
+
+            generateQR(number);
+        }
+
+        // ===============================
+        // Copy Number
+        // ===============================
+
+        async function copyNumber() {
+
+            if (!currentNumber) {
+                alert("Select a payment method first.");
+                return;
+            }
+
+            await navigator.clipboard.writeText(currentNumber);
+
+            alert("Number copied successfully.");
+        }
+
+        // ===============================
+        // Download QR
+        // ===============================
+
+        function downloadQR() {
+
+            const img =
+                document.querySelector("#qrcode img");
+
+            const canvas =
+                document.querySelector("#qrcode canvas");
+
+            let source;
+
+            if (img) {
+                source = img.src;
+            } else if (canvas) {
+                source = canvas.toDataURL("image/png");
+            }
+
+            if (!source) {
+                alert("Generate a QR first.");
+                return;
+            }
+
+            const link = document.createElement("a");
+
+            link.href = source;
+
+            link.download = "payment-qr.png";
+
+            link.click();
+        }
+
+        // ===============================
+        // Share
+        // ===============================
+
+        async function shareQR() {
+
+            if (!currentNumber) {
+                alert("Generate a QR first.");
+                return;
+            }
+
+            if (navigator.share) {
+
+                try {
+
+                    await navigator.share({
+                        title: "Payment QR",
+                        text: `Pay using this number: ${currentNumber}`
+                    });
+
+                } catch (err) {
+                    console.log(err);
+                }
+
+            } else {
+                alert("Web Share API not supported.");
+            }
+        }
+
+        // ===============================
+        // Dark Mode
+        // ===============================
+
+        const html = document.documentElement;
+
+        const themeToggle =
+            document.getElementById("themeToggle");
+
+        themeToggle.addEventListener("click", () => {
+
+            html.classList.toggle("dark");
+
+            themeToggle.innerHTML =
+                html.classList.contains("dark")
+                    ? "☀️"
+                    : "🌙";
+        });
+
+        // Default QR
+        selectPayment("bkash");
+
+    </script>
+
+</body>
+</html>
